@@ -1,0 +1,1046 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grid Slicer</title>
+<meta name="description" content="Free tool to slice one big poster into seamless 1012 × 1350 Instagram grid posts. Runs 100% in your browser – your images are never uploaded. No sign-up." />
+<meta name="theme-color" content="#000000" />
+<meta name="robots" content="index, follow" />
+
+<!-- Social preview -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Grid Slicer" />
+<meta property="og:description" content="Slice one poster into seamless Instagram grid posts. Free, private, no sign-up." />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Grid Slicer" />
+<meta name="twitter:description" content="Slice one poster into seamless Instagram grid posts. Free, private, no sign-up." />
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23000'/%3E%3Cg fill='none' stroke='%23ccff00' stroke-width='4' stroke-linecap='round'%3E%3Crect x='14' y='14' width='36' height='36' rx='4'/%3E%3Cpath d='M26 14v36M38 14v36'/%3E%3C/g%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ==========================================================================
+     Design System: Obsidian & Lime
+     ========================================================================== */
+  :root {
+    --bg-viewport: #000000;
+    --bg-shell: #0b0b0c;
+    --bg-raised: #131315;
+    --accent: #ccff00;
+    --accent-soft: rgba(204, 255, 0, 0.08);
+    --accent-glow: rgba(204, 255, 0, 0.3);
+    --emerald: #10b981;
+
+    --text-primary: #f2f2f2;
+    --text-secondary: rgba(242, 242, 242, 0.62);
+    --text-muted: rgba(242, 242, 242, 0.38);
+
+    --glass-bg: rgba(255, 255, 255, 0.035);
+    --glass-bg-hover: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-border-strong: rgba(255, 255, 255, 0.16);
+
+    --radius-shell: 2.5rem;
+    --radius-card: 1.5rem;
+    --radius-pill: 9999px;
+
+    --font-heading: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--bg-viewport);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection { background: var(--accent); color: #000; }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  /* Slim scrollbars */
+  .sidebar, .stage { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
+  .sidebar::-webkit-scrollbar, .stage::-webkit-scrollbar { width: 8px; }
+  .sidebar::-webkit-scrollbar-thumb, .stage::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.12); border-radius: 8px;
+  }
+
+  /* Background Patterns */
+  .bg-grid {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    background-position: center center;
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 85%);
+            mask-image: radial-gradient(ellipse at center, #000 30%, transparent 85%);
+  }
+
+  .bg-noise {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.15;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  /* Glow Spheres */
+  .glow-sphere {
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 60%);
+    filter: blur(120px);
+    z-index: -1;
+    pointer-events: none;
+  }
+  .glow-sphere.top-left { top: -200px; left: -200px; }
+  .glow-sphere.bottom-right { bottom: -200px; right: -200px; background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 60%); }
+
+  /* ==========================================================================
+     Floating Shell Architecture
+     ========================================================================== */
+  .shell {
+    width: 100%;
+    max-width: 1600px;
+    height: 100%;
+    background: var(--bg-shell);
+    border-radius: var(--radius-shell);
+    box-shadow:
+      0 0 0 1px var(--glass-border),
+      0 1px 0 0 rgba(255,255,255,0.08) inset,
+      0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    overflow: hidden;
+    position: relative;
+    animation: shell-in 0.8s var(--ease) both;
+  }
+  @keyframes shell-in {
+    from { opacity: 0; transform: translateY(16px) scale(0.99); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ── Left Panel (Sidebar) ── */
+  .sidebar {
+    padding: 2.75rem 2.5rem 2rem;
+    border-right: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    overflow-y: auto;
+    background:
+      radial-gradient(120% 60% at 0% 0%, rgba(204,255,0,0.05) 0%, transparent 60%),
+      var(--bg-shell);
+    z-index: 10;
+  }
+
+  .brand { display: flex; flex-direction: column; gap: 1rem; align-items: flex-start; }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .badge .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: blink 2.4s ease-in-out infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.35; } }
+
+  h1 {
+    font-family: var(--font-heading);
+    font-size: 3.4rem;
+    line-height: 0.9;
+    letter-spacing: -0.06em;
+    font-weight: 700;
+  }
+  .h1-accent {
+    background: linear-gradient(135deg, var(--accent) 0%, #fff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-style: italic;
+    padding-right: 0.08em;
+  }
+  .tagline {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    max-width: 30ch;
+  }
+
+  /* ── Upload Dropzone ── */
+  .dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1.5rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px dashed var(--glass-border-strong);
+    border-radius: var(--radius-card);
+    cursor: pointer;
+    text-align: center;
+    gap: 0.9rem;
+    transition: border-color 0.3s, background 0.3s, transform 0.3s var(--ease), box-shadow 0.3s;
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 4px rgba(204,255,0,0.06), 0 12px 40px -12px var(--accent-glow);
+  }
+  .dropzone.dragover { transform: scale(1.02); }
+  .dropzone:focus-within { border-color: var(--accent); }
+  .dropzone.is-error {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+    animation: shake 0.4s;
+  }
+  @keyframes shake {
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+  }
+  .dropzone-icon {
+    color: var(--accent);
+    width: 56px; height: 56px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    border: 1px solid rgba(204,255,0,0.25);
+    transition: transform 0.4s var(--ease);
+  }
+  .dropzone:hover .dropzone-icon { transform: translateY(-3px); }
+  .dropzone span { font-family: var(--font-heading); font-size: 1.125rem; font-weight: 600; letter-spacing: -0.02em; }
+  .dropzone small { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+  /* ── How it works ── */
+  .steps { list-style: none; display: flex; flex-direction: column; gap: 0.9rem; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    display: flex; gap: 0.85rem; align-items: baseline;
+    font-size: 0.875rem; line-height: 1.45;
+    color: var(--text-secondary);
+  }
+  .steps li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .steps strong { color: var(--text-primary); font-weight: 600; }
+
+  /* ── Settings Panel ── */
+  .settings {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 1.5rem;
+  }
+  .select-group { display: flex; flex-direction: column; gap: 0.5rem; position: relative; }
+  .select-group label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+  }
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    padding: 1rem 2.5rem 1rem 1rem;
+    background-color: var(--glass-bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23ccff00' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 0.85rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+  select:hover { background-color: var(--glass-bg-hover); }
+  select:focus, select:focus-visible { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(204,255,0,0.12); }
+  select option { background: var(--bg-shell); color: var(--text-primary); }
+
+  /* ── Neon Pulse Button ── */
+  .btn-primary {
+    width: 100%;
+    padding: 1.2rem;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    margin-top: auto;
+    transition: transform 0.25s var(--ease), box-shadow 0.25s, opacity 0.2s;
+    box-shadow: 0 0 30px var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  .btn-primary svg { transition: transform 0.3s var(--ease); }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 8px 50px var(--accent-glow);
+  }
+  .btn-primary:hover:not(:disabled) svg { transform: translateY(2px); }
+  .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+  .btn-primary:disabled {
+    background: var(--glass-bg);
+    color: var(--text-muted);
+    box-shadow: none;
+    cursor: not-allowed;
+    border: 1px solid var(--glass-border);
+  }
+
+  /* ── Sidebar footer ── */
+  .sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--glass-border);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .privacy {
+    display: flex; gap: 0.6rem; align-items: flex-start;
+    color: var(--text-secondary);
+  }
+  .privacy svg { flex-shrink: 0; color: var(--emerald); margin-top: 2px; }
+  .sidebar-footer .fine { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; }
+
+  /* ── Right Panel (Stage) ── */
+  .stage {
+    padding: 3rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  /* Empty State Layout */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    width: 100%;
+    max-width: 1000px;
+    margin: auto;
+  }
+  .empty-preview-box {
+    width: 100%;
+    aspect-ratio: 3036 / 1350;
+    background:
+      linear-gradient(90deg, transparent calc(33.333% - 1px), rgba(204,255,0,0.18) calc(33.333% - 1px), rgba(204,255,0,0.18) 33.333%, transparent 33.333%,
+                      transparent calc(66.666% - 1px), rgba(204,255,0,0.18) calc(66.666% - 1px), rgba(204,255,0,0.18) 66.666%, transparent 66.666%),
+      rgba(255, 255, 255, 0.02);
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: var(--text-muted);
+    transition: border-color 0.3s;
+  }
+  .empty-preview-box:hover { border-color: rgba(204, 255, 0, 0.3); }
+  .empty-preview-box svg { color: var(--accent); opacity: 0.55; }
+  .empty-preview-box span {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: center;
+    padding: 0 1rem;
+  }
+  .empty-artboards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+  }
+  .empty-artboard {
+    aspect-ratio: 1012 / 1350;
+    background: rgba(255, 255, 255, 0.02);
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-card);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .empty-artboard:nth-child(1)::after { content: '01'; }
+  .empty-artboard:nth-child(2)::after { content: '02'; }
+  .empty-artboard:nth-child(3)::after { content: '03'; }
+
+  /* Main Content Layout */
+  .stage-content {
+    display: none;
+    flex-direction: column;
+    gap: 3rem;
+    width: 100%;
+    max-width: 1000px;
+    margin: auto;
+    animation: fade-up 0.6s var(--ease) both;
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1.25rem;
+    gap: 1rem;
+  }
+  .section-title {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .section-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0.3rem 0.65rem;
+    border: 1px solid rgba(204,255,0,0.25);
+    background: var(--accent-soft);
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+  }
+
+  /* Preview Canvas */
+  .preview-wrapper {
+    width: 100%;
+    position: relative;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.02);
+    background: #000;
+  }
+  .preview-wrapper canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .cut-line {
+    position: absolute;
+    background: var(--accent);
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 0 12px var(--accent);
+    opacity: 0.8;
+  }
+  .cut-line.v { top: 0; bottom: 0; width: 2px; }
+  .cut-line.h { left: 0; right: 0; height: 2px; }
+
+  /* Slices Grid */
+  .slices-grid {
+    display: grid;
+    gap: 1.5rem;
+    width: 100%;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .slice-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-card);
+    position: relative;
+    aspect-ratio: 1012 / 1350;
+    padding: 0.5rem;
+    transition: border-color 0.3s, transform 0.4s var(--ease), box-shadow 0.4s;
+    animation: fade-up 0.6s var(--ease) both;
+  }
+  .slice-card:nth-child(3n+2) { animation-delay: 0.06s; }
+  .slice-card:nth-child(3n)   { animation-delay: 0.12s; }
+  .slice-card:hover {
+    border-color: rgba(204, 255, 0, 0.45);
+    transform: translateY(-4px);
+    box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7), 0 0 30px -10px var(--accent-glow);
+  }
+  .slice-card canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: calc(var(--radius-card) - 4px);
+  }
+  .slice-number {
+    position: absolute;
+    top: 1rem; left: 1rem;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(6px);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--accent);
+    z-index: 2;
+  }
+
+  /* Skeleton Loading */
+  .skeleton-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 1000px;
+    margin: auto;
+  }
+  .skeleton-box {
+    width: 100%;
+    aspect-ratio: 3036 / 1350;
+    background: var(--glass-bg);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--glass-border);
+    animation: pulse 2s infinite;
+  }
+  .skeleton-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  .skeleton-slice {
+    aspect-ratio: 1012 / 1350;
+    background: var(--glass-bg);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--glass-border);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  noscript .nojs {
+    position: fixed; inset: auto 1rem 1rem 1rem; z-index: 99;
+    padding: 1rem; border-radius: 1rem; background: #1a0a0a; color: #fca5a5;
+    border: 1px solid #ef4444; font-size: 14px; text-align: center;
+  }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    body { padding: 0; height: auto; min-height: 100vh; overflow: auto; display: block; }
+    .shell { grid-template-columns: 1fr; height: auto; min-height: 100vh; border-radius: 0; box-shadow: none; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--glass-border); overflow: visible; }
+    .stage { overflow: visible; }
+    .btn-primary { margin-top: 0; }
+    .tagline { max-width: 48ch; }
+  }
+  @media (max-width: 640px) {
+    .sidebar { padding: 2rem 1.25rem 1.5rem; gap: 1.5rem; }
+    .stage { padding: 1.5rem 1rem 2.5rem; }
+    h1 { font-size: 2.75rem; }
+    .section-title { font-size: 1.2rem; }
+    .section-meta { font-size: 10px; }
+    .slices-grid, .skeleton-grid, .empty-artboards { gap: 0.6rem; }
+    .slice-card { padding: 0.25rem; border-radius: 1rem; }
+    .slice-card canvas { border-radius: 0.8rem; }
+    .slice-number { top: 0.5rem; left: 0.5rem; font-size: 9px; padding: 2px 5px; }
+    .empty-state, .stage-content { gap: 2rem; }
+    .empty-artboard, .skeleton-slice, .skeleton-box, .empty-preview-box { border-radius: 1rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="bg-noise"></div>
+  <div class="glow-sphere top-left"></div>
+  <div class="glow-sphere bottom-right"></div>
+
+  <noscript><div class="nojs">Grid Slicer needs JavaScript enabled to work.</div></noscript>
+
+  <main class="shell">
+
+    <aside class="sidebar">
+      <header class="brand">
+        <h1>Grid<br><span class="h1-accent">Slicer.</span></h1>
+        <p class="tagline">Turn one wide poster into a seamless Instagram grid, sliced into perfect 1012 × 1350 posts.</p>
+      </header>
+
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="image/*" hidden />
+        <div class="dropzone-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </div>
+        <span id="uploadText">Initialize Upload</span>
+        <small id="fileSizeText">3036 × 1350 px recommended</small>
+      </label>
+
+      <ol class="steps" aria-label="How it works">
+        <li><span><strong>Drop</strong> in your poster or click to browse.</span></li>
+        <li><span><strong>Pick</strong> how many rows your grid needs.</span></li>
+        <li><span><strong>Export</strong> a ZIP of numbered PNGs, ready to post.</span></li>
+      </ol>
+
+      <div class="settings" id="settingsPanel" style="display: none;">
+        <div class="select-group">
+          <label for="rowSelect">Grid Topology</label>
+          <select id="rowSelect">
+            <option value="1">1 Row (3 posts)</option>
+            <option value="2">2 Rows (6 posts)</option>
+            <option value="3">3 Rows (9 posts)</option>
+            <option value="4">4 Rows (12 posts)</option>
+            <option value="5">5 Rows (15 posts)</option>
+            <option value="6">6 Rows (18 posts)</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="exportBtn" disabled>
+        <span id="exportBtnText">Execute Export</span>
+        <svg id="exportIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </button>
+
+      <footer class="sidebar-footer">
+        <div class="privacy">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <polyline points="9 12 11 14 15 10"></polyline>
+          </svg>
+          <span>100% private. Your image is processed in your browser and never uploaded.</span>
+        </div>
+        <div class="fine">&copy; <span id="year">2026</span> Grid Slicer</div>
+      </footer>
+    </aside>
+
+    <section class="stage">
+
+      <!-- 1. Empty State (Initial View) -->
+      <div class="empty-state" id="emptyState">
+        <div>
+          <div class="section-header">
+            <div class="section-title">Seamless Preview</div>
+            <div class="section-meta">Awaiting Input</div>
+          </div>
+          <div class="empty-preview-box">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <span>Your sliced poster will appear here</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-header">
+            <div class="section-title">Artboards</div>
+            <div class="section-meta">3 Posts</div>
+          </div>
+          <div class="empty-artboards">
+            <div class="empty-artboard"></div>
+            <div class="empty-artboard"></div>
+            <div class="empty-artboard"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Skeleton Loading State -->
+      <div class="skeleton-container" id="skeletonStage" style="display: none;">
+        <div class="skeleton-box"></div>
+        <div class="skeleton-grid">
+          <div class="skeleton-slice"></div>
+          <div class="skeleton-slice"></div>
+          <div class="skeleton-slice"></div>
+        </div>
+      </div>
+
+      <!-- 3. Main Content (Loaded View) -->
+      <div class="stage-content" id="stageContent">
+        <div>
+          <div class="section-header">
+            <div class="section-title">Seamless Preview</div>
+            <div class="section-meta">Cut lines active</div>
+          </div>
+          <div class="preview-wrapper" id="previewWrapper">
+            <canvas id="mainCanvas"></canvas>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-header">
+            <div class="section-title">Artboards</div>
+            <div class="section-meta">1012 × 1350 px</div>
+          </div>
+          <div class="slices-grid" id="slicesGrid"></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      img: null,
+      imgName: 'poster',
+      rows: 1,
+      tileW: 1012,
+      tileH: 1350
+    };
+
+    const $ = (s) => document.querySelector(s);
+
+    function getGeometry() {
+      const cols = 3;
+      const rows = state.rows;
+      const overlapAmt = 0;
+      const stepX = state.tileW - overlapAmt;
+      
+      const canvasW = (cols * state.tileW) - ((cols - 1) * overlapAmt);
+      const canvasH = rows * state.tileH;
+
+      const panels = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          panels.push({
+            x: c * stepX, 
+            y: r * state.tileH, 
+            w: state.tileW, 
+            h: state.tileH, 
+            idx: (r * cols) + c + 1
+          });
+        }
+      }
+      return { canvasW, canvasH, panels, cols, rows, overlapAmt };
+    }
+
+    function drawPanel(ctx, g, p, scale) {
+      ctx.save();
+      ctx.scale(scale, scale);
+      ctx.translate(-p.x, -p.y);
+      
+      const img = state.img;
+      const s = Math.max(g.canvasW / img.width, g.canvasH / img.height);
+      const dw = img.width * s;
+      const dh = img.height * s;
+      const dx = (g.canvasW - dw) / 2;
+      const dy = (g.canvasH - dh) / 2;
+      
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.restore();
+    }
+
+    function render() {
+      if (!state.img) return;
+      const g = getGeometry();
+      
+      // Render Preview
+      const mainCanvas = $('#mainCanvas');
+      const previewScale = 1040 / g.canvasW;
+      mainCanvas.width = 1040;
+      mainCanvas.height = g.canvasH * previewScale;
+      
+      const pCtx = mainCanvas.getContext('2d');
+      const s = Math.max(g.canvasW / state.img.width, g.canvasH / state.img.height);
+      const dw = state.img.width * s;
+      const dh = state.img.height * s;
+      const dx = (g.canvasW - dw) / 2;
+      const dy = (g.canvasH - dh) / 2;
+      
+      pCtx.imageSmoothingEnabled = true;
+      pCtx.imageSmoothingQuality = 'high';
+      pCtx.drawImage(state.img, dx * previewScale, dy * previewScale, dw * previewScale, dh * previewScale);
+
+      // Cut Lines
+      const wrapper = $('#previewWrapper');
+      wrapper.querySelectorAll('.cut-line').forEach(el => el.remove());
+      
+      for (let c = 1; c < g.cols; c++) {
+        const line = document.createElement('div');
+        line.className = 'cut-line v';
+        line.style.left = `${((c * (g.canvasW / g.cols)) / g.canvasW) * 100}%`;
+        wrapper.appendChild(line);
+      }
+      for (let r = 1; r < g.rows; r++) {
+        const line = document.createElement('div');
+        line.className = 'cut-line h';
+        line.style.top = `${((r * g.tileH) / g.canvasH) * 100}%`;
+        wrapper.appendChild(line);
+      }
+
+      // Render Slices
+      const grid = $('#slicesGrid');
+      grid.innerHTML = '';
+      const rawScale = 0.25;
+
+      g.panels.forEach((p) => {
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(p.w * rawScale);
+        cv.height = Math.round(p.h * rawScale);
+        
+        const ctx = cv.getContext('2d');
+        drawPanel(ctx, g, p, rawScale);
+        
+        const card = document.createElement('div');
+        card.className = 'slice-card';
+        
+        const numStr = p.idx < 10 ? `0${p.idx}` : p.idx;
+        card.innerHTML = `<div class="slice-number">${numStr}</div>`;
+        card.prepend(cv);
+        grid.appendChild(card);
+      });
+
+      // Swap Views
+      $('#emptyState').style.display = 'none';
+      $('#skeletonStage').style.display = 'none';
+      $('#stageContent').style.display = 'flex';
+      $('#settingsPanel').style.display = 'flex';
+      $('#exportBtn').disabled = false;
+    }
+
+    function triggerErrorShake() {
+      const drop = $('#dropzone');
+      drop.classList.add('is-error');
+      setTimeout(() => {
+        drop.classList.remove('is-error');
+      }, 2000);
+    }
+
+    function loadImage(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        triggerErrorShake();
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      
+      // UI Reset: Hide empty state and previous content, show skeleton
+      $('#emptyState').style.display = 'none';
+      $('#stageContent').style.display = 'none';
+      $('#skeletonStage').style.display = 'flex';
+      
+      img.onload = () => {
+        state.img = img;
+        
+        // Save filename for ZIP
+        state.imgName = file.name.replace(/\.[^/.]+$/, "");
+
+        // Auto-detect rows
+        let detectedRows = Math.max(1, Math.round(img.height / state.tileH));
+        if (detectedRows > 6) detectedRows = 6;
+        state.rows = detectedRows;
+        $('#rowSelect').value = detectedRows.toString();
+        
+        // Update upload box text
+        $('#uploadText').textContent = "Change Poster";
+        $('#fileSizeText').textContent = `${img.width} × ${img.height} px`;
+        
+        // Render everything
+        render();
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }
+
+    // Events
+    $('#fileInput').addEventListener('change', e => loadImage(e.target.files[0]));
+    
+    $('#rowSelect').addEventListener('change', e => {
+      state.rows = parseInt(e.target.value, 10);
+      render();
+    });
+
+    const dropzone = $('#dropzone');
+    ['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, e => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    }));
+    ['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+    }));
+    dropzone.addEventListener('drop', e => loadImage(e.dataTransfer.files[0]));
+
+    // ZIP logic
+    const CRC_TABLE = (() => {
+      const t = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        t[n] = c >>> 0;
+      }
+      return t;
+    })();
+
+    function crc32(u8) {
+      let c = 0xFFFFFFFF;
+      for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+      return (c ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    function makeZip(files) {
+      const enc = new TextEncoder();
+      const parts = [], central = [];
+      let offset = 0;
+      for (const f of files) {
+        const name = enc.encode(f.name);
+        const data = f.data;
+        const crc = crc32(data);
+
+        const lh = new Uint8Array(30 + name.length);
+        const dv = new DataView(lh.buffer);
+        dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true); dv.setUint16(6, 0x0800, true);
+        dv.setUint32(14, crc, true); dv.setUint32(18, data.length, true); dv.setUint32(22, data.length, true);
+        dv.setUint16(26, name.length, true);
+        lh.set(name, 30);
+        parts.push(lh, data);
+
+        const cd = new Uint8Array(46 + name.length);
+        const cv = new DataView(cd.buffer);
+        cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true);
+        cv.setUint32(16, crc, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
+        cv.setUint16(28, name.length, true); cv.setUint32(42, offset, true);
+        cd.set(name, 46);
+        central.push(cd);
+
+        offset += lh.length + data.length;
+      }
+      const centralSize = central.reduce((a, b) => a + b.length, 0);
+      const eocd = new Uint8Array(22);
+      const ev = new DataView(eocd.buffer);
+      ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+      ev.setUint32(12, centralSize, true); ev.setUint32(16, offset, true);
+
+      const out = new Uint8Array(offset + centralSize + 22);
+      let p = 0;
+      for (const part of parts) { out.set(part, p); p += part.length; }
+      for (const part of central) { out.set(part, p); p += part.length; }
+      out.set(eocd, p);
+      return out;
+    }
+
+    async function canvasToBytes(cv) {
+      const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+      return new Uint8Array(await blob.arrayBuffer());
+    }
+
+    $('#exportBtn').addEventListener('click', async () => {
+      if (!state.img) return;
+      const btn = $('#exportBtn');
+      const originalText = $('#exportBtnText').textContent;
+      
+      btn.disabled = true;
+      $('#exportBtnText').textContent = "Processing...";
+
+      // Slight delay for UI feedback
+      await new Promise(r => setTimeout(r, 400));
+
+      const g = getGeometry();
+      const files = [];
+      
+      for (let i = 0; i < g.panels.length; i++) {
+        const p = g.panels[i];
+        const cv = document.createElement('canvas');
+        cv.width = p.w;
+        cv.height = p.h;
+        
+        const ctx = cv.getContext('2d');
+        drawPanel(ctx, g, p, 1);
+        
+        const numStr = p.idx < 10 ? `0${p.idx}` : p.idx;
+        files.push({
+          name: `${state.imgName}_${numStr}.png`,
+          data: await canvasToBytes(cv)
+        });
+      }
+      
+      const zip = makeZip(files);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([zip], { type: 'application/zip' }));
+      a.download = `${state.imgName}_slices.zip`;
+      a.click();
+      
+      $('#exportBtnText').textContent = "Complete!";
+      
+      setTimeout(() => {
+        $('#exportBtnText').textContent = originalText;
+        btn.disabled = false;
+      }, 2000);
+    });
+  </script>
+</body>
+</html>
